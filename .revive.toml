@@ -1,0 +1,23 @@
+ignoreGeneratedHeader = true
+severity = "warning"
+
+[rule.blank-imports]
+  disabled = false
+
+[rule.context-as-argument]
+  disabled = false
+
+[rule.var-naming]
+  arguments = [["ID"], []]
+
+[rule.exported]
+  disabled = false
+
+[rule.unused-parameter]
+  disabled = false
+
+[rule.error-return]
+  disabled = false
+
+[rule.package-comments]
+  disabled = true
