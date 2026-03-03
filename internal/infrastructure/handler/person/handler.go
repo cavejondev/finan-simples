@@ -93,7 +93,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, domain.ErrInvalidCredentials):
 			sharedhttp.ErrorResponse(w, http.StatusUnauthorized, CodeInvalidCredentials, err.Error())
 		default:
-			sharedhttp.ErrorResponse(w, http.StatusInternalServerError, CodeInternalError, "Unexpected error")
+			sharedhttp.ErrorResponse(w, http.StatusInternalServerError, CodeInternalError, err.Error())
 		}
 
 		return

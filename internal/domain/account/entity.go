@@ -1,15 +1,11 @@
 // Package person é o pacote de pessoa no domain
 package person
 
-import (
-	"time"
-
-	"github.com/google/uuid"
-)
+import "time"
 
 // Person representa a entidade de pessoa no dominio
 type Person struct {
-	ID        uuid.UUID `db:"id"`
+	ID        int64     `db:"id"`
 	Name      string    `db:"name"`
 	Email     string    `db:"email"`
 	Password  string    `db:"password"`

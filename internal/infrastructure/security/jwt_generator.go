@@ -6,24 +6,43 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// JWTGenerator é a estrutura do serivco de JWT
-type JWTGenerator struct {
-	secret []byte
+// Claims representa os claims do JWT
+type Claims struct {
+	PersonID string `json:"sub"`
+	jwt.RegisteredClaims
 }
 
-// NewJWTGenerator retorna uma nova instancia de JWT
+// JWTGenerator é a estrutura do serviço de JWT
+type JWTGenerator struct {
+	secret []byte
+	ttl    time.Duration
+	issuer string
+}
+
+// NewJWTGenerator cria uma nova instancia do gerador de JWT
 func NewJWTGenerator(secret string) *JWTGenerator {
 	return &JWTGenerator{
 		secret: []byte(secret),
+		ttl:    24 * time.Hour,
+		issuer: "finan-simples",
 	}
 }
 
-// Generate gera um JWT
+// Generate gera um JWT assinado
 func (j *JWTGenerator) Generate(personID string) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"person_id": personID,
-		"exp":       time.Now().Add(24 * time.Hour).Unix(),
-	})
+	now := time.Now()
+
+	claims := Claims{
+		PersonID: personID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   personID,
+			Issuer:    j.issuer,
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(j.ttl)),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	return token.SignedString(j.secret)
 }

@@ -2,10 +2,11 @@ package person
 
 import (
 	"errors"
-	"fmt"
 	"net/mail"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // Erros de servico
@@ -53,18 +54,25 @@ func (s *Service) Register(name, email, password string) error {
 	name = strings.TrimSpace(name)
 	email = strings.TrimSpace(email)
 
+	if name == "" {
+		return ErrNameRequired
+	}
+	if email == "" {
+		return ErrEmailRequired
+	}
+	if password == "" {
+		return ErrPasswordRequired
+	}
+
 	if len(name) < 3 {
 		return ErrNameTooShort
 	}
-
 	if len(email) < 5 {
 		return ErrEmailTooShort
 	}
-
 	if _, err := mail.ParseAddress(email); err != nil {
 		return ErrEmailInvalid
 	}
-
 	if len(password) < 6 {
 		return ErrPasswordTooShort
 	}
@@ -74,7 +82,7 @@ func (s *Service) Register(name, email, password string) error {
 		return err
 	}
 
-	if existing != nil && existing.ID > 0 {
+	if existing != nil {
 		return ErrPersonDuplicated
 	}
 
@@ -84,6 +92,7 @@ func (s *Service) Register(name, email, password string) error {
 	}
 
 	person := &Person{
+		ID:        uuid.New(),
 		Name:      name,
 		Email:     email,
 		Password:  hash,
@@ -94,25 +103,24 @@ func (s *Service) Register(name, email, password string) error {
 		if errors.Is(err, ErrPersistenceEmailDuplicated) {
 			return ErrPersonDuplicated
 		}
-		return ErrPersonInternal
+		return err
 	}
 
 	return nil
 }
 
-// ForgotPassword e a funcao que ajuda o usuario a recupera a senha
+// ForgotPassword ajuda o usuario a recuperar a senha
 func (s *Service) ForgotPassword(email string) error {
 	person, err := s.repository.FindByEmail(email)
 	if err != nil {
 		return err
 	}
 
-	if person == nil || person.ID <= 0 {
+	if person == nil || person.ID == uuid.Nil {
 		return ErrPersonNotFound
 	}
 
 	// Enviar email para recuperar a senha
-
 	return nil
 }
 
@@ -123,7 +131,7 @@ func (s *Service) Login(email, password string) (string, error) {
 		return "", ErrInvalidCredentials
 	}
 
-	if person == nil || person.ID <= 0 {
+	if person == nil || person.ID == uuid.Nil {
 		return "", ErrInvalidCredentials
 	}
 
@@ -131,5 +139,5 @@ func (s *Service) Login(email, password string) (string, error) {
 		return "", ErrInvalidCredentials
 	}
 
-	return s.tokenGenerator.Generate(fmt.Sprintf("%d", person.ID))
+	return s.tokenGenerator.Generate(person.ID.String())
 }

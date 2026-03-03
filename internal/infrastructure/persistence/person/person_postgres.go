@@ -27,21 +27,23 @@ func NewPersonRepository(db *sqlx.DB) *Repository {
 // Create salva uma nova pessoa no banco
 func (r *Repository) Create(p *person.Person) error {
 	query := `
-		INSERT INTO person (name, email, password)
-		VALUES ($1, $2, $3)
-		RETURNING id, created_at
+		INSERT INTO person (id, name, email, password)
+		VALUES ($1, $2, $3, $4)
+		RETURNING created_at
 	`
 
 	err := r.db.QueryRowx(
 		query,
+		p.ID, // UUID vindo do domain
 		p.Name,
 		p.Email,
 		p.Password,
-	).Scan(&p.ID, &p.CreatedAt)
+	).Scan(&p.CreatedAt)
 	if err != nil {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) {
-			if pqErr.Code == persistence.PgUniqueViolation && pqErr.Constraint == EmailUnique {
+			if pqErr.Code == persistence.PgUniqueViolation &&
+				pqErr.Constraint == EmailUnique {
 				return person.ErrPersistenceEmailDuplicated
 			}
 		}
