@@ -1,12 +1,15 @@
 package person
 
 import (
+	"context"
 	"errors"
 	"net/mail"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/cavejondev/finan-simples/internal/domain/logger"
 )
 
 // Erros de servico
@@ -34,6 +37,7 @@ type Service struct {
 	repository     Repository
 	bcryptHasher   BcryptHasher
 	tokenGenerator TokenGenerator
+	logger         *logger.Service
 }
 
 // NewService cria nova instancia do servico de person
@@ -41,25 +45,29 @@ func NewService(
 	r Repository,
 	hasher BcryptHasher,
 	tokenGenerator TokenGenerator,
+	log *logger.Service,
 ) *Service {
 	return &Service{
 		repository:     r,
 		bcryptHasher:   hasher,
 		tokenGenerator: tokenGenerator,
+		logger:         log,
 	}
 }
 
 // Register cria uma nova pessoa com senha criptografada
-func (s *Service) Register(name, email, password string) error {
+func (s *Service) Register(ctx context.Context, name, email, password string) error {
 	name = strings.TrimSpace(name)
 	email = strings.TrimSpace(email)
 
 	if name == "" {
 		return ErrNameRequired
 	}
+
 	if email == "" {
 		return ErrEmailRequired
 	}
+
 	if password == "" {
 		return ErrPasswordRequired
 	}
@@ -67,18 +75,28 @@ func (s *Service) Register(name, email, password string) error {
 	if len(name) < 3 {
 		return ErrNameTooShort
 	}
+
 	if len(email) < 5 {
 		return ErrEmailTooShort
 	}
+
 	if _, err := mail.ParseAddress(email); err != nil {
 		return ErrEmailInvalid
 	}
+
 	if len(password) < 6 {
 		return ErrPasswordTooShort
 	}
 
 	existing, err := s.repository.FindByEmail(email)
 	if err != nil {
+
+		s.logger.Error(
+			ctx,
+			"person repository find email error",
+			err,
+		)
+
 		return err
 	}
 
@@ -88,6 +106,13 @@ func (s *Service) Register(name, email, password string) error {
 
 	hash, err := s.bcryptHasher.Hash(password)
 	if err != nil {
+
+		s.logger.Error(
+			ctx,
+			"bcrypt hash error",
+			err,
+		)
+
 		return ErrPersonInternal
 	}
 
@@ -100,9 +125,17 @@ func (s *Service) Register(name, email, password string) error {
 	}
 
 	if err := s.repository.Create(person); err != nil {
+
 		if errors.Is(err, ErrPersistenceEmailDuplicated) {
 			return ErrPersonDuplicated
 		}
+
+		s.logger.Error(
+			ctx,
+			"person repository create error",
+			err,
+		)
+
 		return err
 	}
 
@@ -110,9 +143,16 @@ func (s *Service) Register(name, email, password string) error {
 }
 
 // ForgotPassword ajuda o usuario a recuperar a senha
-func (s *Service) ForgotPassword(email string) error {
+func (s *Service) ForgotPassword(ctx context.Context, email string) error {
 	person, err := s.repository.FindByEmail(email)
 	if err != nil {
+
+		s.logger.Error(
+			ctx,
+			"person repository find email error",
+			err,
+		)
+
 		return err
 	}
 
@@ -120,14 +160,22 @@ func (s *Service) ForgotPassword(email string) error {
 		return ErrPersonNotFound
 	}
 
-	// Enviar email para recuperar a senha
+	// aqui iria envio de email no futuro
+
 	return nil
 }
 
 // Login autentica usuario e retorna token
-func (s *Service) Login(email, password string) (string, error) {
+func (s *Service) Login(ctx context.Context, email, password string) (string, error) {
 	person, err := s.repository.FindByEmail(email)
 	if err != nil {
+
+		s.logger.Error(
+			ctx,
+			"person repository find email error",
+			err,
+		)
+
 		return "", ErrInvalidCredentials
 	}
 
@@ -139,5 +187,17 @@ func (s *Service) Login(email, password string) (string, error) {
 		return "", ErrInvalidCredentials
 	}
 
-	return s.tokenGenerator.Generate(person.ID.String())
+	token, err := s.tokenGenerator.Generate(person.ID.String())
+	if err != nil {
+
+		s.logger.Error(
+			ctx,
+			"token generator error",
+			err,
+		)
+
+		return "", ErrPersonInternal
+	}
+
+	return token, nil
 }

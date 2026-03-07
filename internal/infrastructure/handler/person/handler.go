@@ -22,13 +22,14 @@ func NewHandler(service *domain.Service) *Handler {
 // Register endpoint de criação de usuário.
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
+	ctx := r.Context()
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		sharedhttp.ErrorResponse(w, http.StatusBadRequest, CodeInvalidBody, "Invalid request body")
 		return
 	}
 
-	err := h.service.Register(req.Name, req.Email, req.Password)
+	err := h.service.Register(ctx, req.Name, req.Email, req.Password)
 	if err != nil {
 
 		switch err {
@@ -80,13 +81,14 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 // Login endpoint de autenticação.
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
+	ctx := r.Context()
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		sharedhttp.ErrorResponse(w, http.StatusBadRequest, CodeInvalidBody, "Invalid request body")
 		return
 	}
 
-	token, err := h.service.Login(req.Email, req.Password)
+	token, err := h.service.Login(ctx, req.Email, req.Password)
 	if err != nil {
 
 		switch {

@@ -10,9 +10,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
 
+	"github.com/cavejondev/finan-simples/internal/domain/logger"
 	"github.com/cavejondev/finan-simples/internal/domain/person"
 	"github.com/cavejondev/finan-simples/internal/infrastructure/database"
+	"github.com/cavejondev/finan-simples/internal/infrastructure/handler/middleware"
 	personHttp "github.com/cavejondev/finan-simples/internal/infrastructure/handler/person"
+	loggerPersistent "github.com/cavejondev/finan-simples/internal/infrastructure/persistence/logger"
 	personPersistent "github.com/cavejondev/finan-simples/internal/infrastructure/persistence/person"
 	"github.com/cavejondev/finan-simples/internal/infrastructure/security"
 )
@@ -27,12 +30,17 @@ func main() {
 	// Infra
 	// ========================
 
-	db, err := database.NewPostgresConnection()
+	db, err := database.NewMainPostgresConnection()
+	if err != nil {
+		log.Fatal(err)
+	}
+	dbLog, err := database.NewLogPostgresConnection()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	database.RunMigrationsMaster(db)
+	database.RunMigrationsMain(db)
+	database.RunMigrationsLogs(dbLog)
 
 	repo := personPersistent.NewPersonRepository(db)
 	hasher := security.NewBcryptHasher()
@@ -45,11 +53,14 @@ func main() {
 
 	tokenGenerator := security.NewJWTGenerator(secret)
 
+	logRepo := loggerPersistent.NewRepository(dbLog)
+	logService := logger.NewService(logRepo)
+
 	// ========================
 	// Domain Service
 	// ========================
 
-	service := person.NewService(repo, hasher, tokenGenerator)
+	service := person.NewService(repo, hasher, tokenGenerator, logService)
 
 	// ========================
 	// HTTP Handler
@@ -58,6 +69,8 @@ func main() {
 	handler := personHttp.NewHandler(service)
 
 	r := chi.NewRouter()
+
+	r.Use(middleware.RequestMiddleware(logService))
 
 	personHttp.RegisterRoutes(r, handler)
 

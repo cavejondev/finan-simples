@@ -7,15 +7,24 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-// RunMigrationsMaster roda todas as migrations
-func RunMigrationsMaster(db *sqlx.DB) {
-	migrationsDir := "internal/infrastructure/database/migrations"
-
+func runMigrations(db *sqlx.DB, dir string) {
 	goose.SetDialect("postgres")
 
-	if err := goose.Up(db.DB, migrationsDir); err != nil {
+	if err := goose.Up(db.DB, dir); err != nil {
 		log.Fatal("Erro ao rodar migrations:", err)
 	}
 
-	log.Println("Migrations executadas com sucesso 🚀")
+	log.Println("Migrations executadas com sucesso")
+}
+
+// RunMigrationsMain Banco principal
+func RunMigrationsMain(db *sqlx.DB) {
+	dir := "internal/infrastructure/database/migrations/main"
+	runMigrations(db, dir)
+}
+
+// RunMigrationsLogs Banco de logs
+func RunMigrationsLogs(db *sqlx.DB) {
+	dir := "internal/infrastructure/database/migrations/logs"
+	runMigrations(db, dir)
 }
