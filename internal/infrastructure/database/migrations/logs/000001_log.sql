@@ -28,7 +28,6 @@ CREATE TABLE logs (
 
     method http_method,
     path TEXT,
-    status_code INTEGER,
 
     error TEXT,
     metadata JSONB,

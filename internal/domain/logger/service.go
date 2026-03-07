@@ -10,24 +10,29 @@ import (
 	"github.com/google/uuid"
 )
 
+// Service representa o servico de logger
 type Service struct {
 	repo Repository
 }
 
+// NewService cria nova instancia do servico de logger
 func NewService(repo Repository) *Service {
 	return &Service{
 		repo: repo,
 	}
 }
 
+// Info registra um log de nível INFO
 func (s *Service) Info(ctx context.Context, message string) {
 	s.save(ctx, LevelInfo, message, nil)
 }
 
+// Warn registra um log de nível WARN
 func (s *Service) Warn(ctx context.Context, message string) {
 	s.save(ctx, LevelWarn, message, nil)
 }
 
+// Registra um log de nível ERROR com erro opcional
 func (s *Service) Error(ctx context.Context, message string, err error) {
 	var errMsg *string
 
@@ -39,6 +44,7 @@ func (s *Service) Error(ctx context.Context, message string, err error) {
 	s.save(ctx, LevelError, message, errMsg)
 }
 
+// Debug registra um log de nível DEBUG
 func (s *Service) Debug(ctx context.Context, message string) {
 	s.save(ctx, LevelDebug, message, nil)
 }

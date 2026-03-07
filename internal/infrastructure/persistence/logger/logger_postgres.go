@@ -1,3 +1,4 @@
+// Package logger é o pacote de log do sistema
 package logger
 
 import (
@@ -6,16 +7,19 @@ import (
 	"github.com/cavejondev/finan-simples/internal/domain/logger"
 )
 
+// Repository representa o repositório responsável por persistir logs no banco
 type Repository struct {
 	db *sqlx.DB
 }
 
+// NewRepository cria uma nova instância do repositório de logs
 func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{
 		db: db,
 	}
 }
 
+// Create insere um novo log na tabela logs
 func (r *Repository) Create(l *logger.Log) error {
 	query := `
 	INSERT INTO logs (
@@ -27,7 +31,6 @@ func (r *Repository) Create(l *logger.Log) error {
 		user_id,
 		method,
 		path,
-		status_code,
 		error,
 		metadata
 	)
@@ -40,7 +43,6 @@ func (r *Repository) Create(l *logger.Log) error {
 		:user_id,
 		:method,
 		:path,
-		:status_code,
 		:error,
 		:metadata
 	)
