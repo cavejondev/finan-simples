@@ -1,13 +1,17 @@
-// Package person é o pacote de pessoa no domain
-package person
+// Package account é o pacote de conta no domain
+package account
 
-import "time"
+import (
+	"time"
 
-// Person representa a entidade de pessoa no dominio
-type Person struct {
-	ID        int64     `db:"id"`
-	Name      string    `db:"name"`
-	Email     string    `db:"email"`
-	Password  string    `db:"password"`
-	CreatedAt time.Time `db:"created_at"`
+	"github.com/google/uuid"
+)
+
+// Account representa a entidade de conta no dominio
+type Account struct {
+	ID        uuid.UUID  `db:"id"`
+	Name      string     `db:"name"`
+	Balance   int64      `db:"balance"`
+	CreatedAt time.Time  `db:"created_at"`
+	ClosedAt  *time.Time `db:"closed_at"`
 }

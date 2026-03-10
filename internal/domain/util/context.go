@@ -15,12 +15,12 @@ const (
 	PathKey      key = "path"
 )
 
-func SetRequestID(ctx context.Context, id string) context.Context {
+func SetRequestID(ctx context.Context, id uuid.UUID) context.Context {
 	return context.WithValue(ctx, RequestIDKey, id)
 }
 
-func GetRequestID(ctx context.Context) *string {
-	if v, ok := ctx.Value(RequestIDKey).(string); ok {
+func GetRequestID(ctx context.Context) *uuid.UUID {
+	if v, ok := ctx.Value(RequestIDKey).(uuid.UUID); ok {
 		return &v
 	}
 	return nil
@@ -37,14 +37,13 @@ func GetUserID(ctx context.Context) *uuid.UUID {
 	return nil
 }
 
-func SetMethod(ctx context.Context, method string) context.Context {
+func SetMethod(ctx context.Context, method Method) context.Context {
 	return context.WithValue(ctx, MethodKey, method)
 }
 
 func GetMethod(ctx context.Context) *Method {
-	if v, ok := ctx.Value(MethodKey).(string); ok {
-		m := Method(v)
-		return &m
+	if v, ok := ctx.Value(MethodKey).(Method); ok {
+		return &v
 	}
 	return nil
 }

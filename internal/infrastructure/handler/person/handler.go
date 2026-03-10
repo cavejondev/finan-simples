@@ -6,7 +6,10 @@ import (
 	"net/http"
 
 	domain "github.com/cavejondev/finan-simples/internal/domain/person"
+	contextutil "github.com/cavejondev/finan-simples/internal/domain/util"
 	sharedhttp "github.com/cavejondev/finan-simples/internal/infrastructure/handler"
+	"github.com/cavejondev/finan-simples/internal/infrastructure/handler/returncodes"
+	"github.com/google/uuid"
 )
 
 // Handler adapta requisições HTTP para o domínio person.
@@ -21,11 +24,13 @@ func NewHandler(service *domain.Service) *Handler {
 
 // Register endpoint de criação de usuário.
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
 	var req RegisterRequest
 	ctx := r.Context()
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sharedhttp.ErrorResponse(w, http.StatusBadRequest, CodeInvalidBody, "Invalid request body")
+		sharedhttp.ErrorResponse(w, r, http.StatusBadRequest, CodeInvalidBody, "Invalid request body")
 		return
 	}
 
@@ -36,34 +41,34 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 		// NAME
 		case domain.ErrNameRequired:
-			sharedhttp.ErrorResponse(w, http.StatusBadRequest, CodeNameRequired, err.Error())
+			sharedhttp.ErrorResponse(w, r, http.StatusBadRequest, CodeNameRequired, err.Error())
 
 		case domain.ErrNameTooShort:
-			sharedhttp.ErrorResponse(w, http.StatusBadRequest, CodeNameTooShort, err.Error())
+			sharedhttp.ErrorResponse(w, r, http.StatusBadRequest, CodeNameTooShort, err.Error())
 
 		// EMAIL
 		case domain.ErrEmailRequired:
-			sharedhttp.ErrorResponse(w, http.StatusBadRequest, CodeEmailRequired, err.Error())
+			sharedhttp.ErrorResponse(w, r, http.StatusBadRequest, CodeEmailRequired, err.Error())
 
 		case domain.ErrEmailTooShort:
-			sharedhttp.ErrorResponse(w, http.StatusBadRequest, CodeEmailTooShort, err.Error())
+			sharedhttp.ErrorResponse(w, r, http.StatusBadRequest, CodeEmailTooShort, err.Error())
 
 		case domain.ErrEmailInvalid:
-			sharedhttp.ErrorResponse(w, http.StatusBadRequest, CodeEmailInvalid, err.Error())
+			sharedhttp.ErrorResponse(w, r, http.StatusBadRequest, CodeEmailInvalid, err.Error())
 
 		// PASSWORD
 		case domain.ErrPasswordRequired:
-			sharedhttp.ErrorResponse(w, http.StatusBadRequest, CodePasswordRequired, err.Error())
+			sharedhttp.ErrorResponse(w, r, http.StatusBadRequest, CodePasswordRequired, err.Error())
 
 		case domain.ErrPasswordTooShort:
-			sharedhttp.ErrorResponse(w, http.StatusBadRequest, CodePasswordTooShort, err.Error())
+			sharedhttp.ErrorResponse(w, r, http.StatusBadRequest, CodePasswordTooShort, err.Error())
 
 		// BUSINESS
 		case domain.ErrPersonDuplicated:
-			sharedhttp.ErrorResponse(w, http.StatusConflict, CodePersonDuplicated, err.Error())
+			sharedhttp.ErrorResponse(w, r, http.StatusConflict, CodePersonDuplicated, err.Error())
 
 		default:
-			sharedhttp.ErrorResponse(w, http.StatusInternalServerError, CodeInternalError, "internal error")
+			sharedhttp.ErrorResponse(w, r, http.StatusInternalServerError, CodeInternalError, "internal error")
 		}
 
 		return
@@ -71,6 +76,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	sharedhttp.SuccessResponse(
 		w,
+		r,
 		http.StatusCreated,
 		CodeRegistred,
 		"Person registered successfully",
@@ -80,11 +86,13 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 // Login endpoint de autenticação.
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
 	var req LoginRequest
 	ctx := r.Context()
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sharedhttp.ErrorResponse(w, http.StatusBadRequest, CodeInvalidBody, "Invalid request body")
+		sharedhttp.ErrorResponse(w, r, http.StatusBadRequest, CodeInvalidBody, "Invalid request body")
 		return
 	}
 
@@ -93,13 +101,47 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 		switch {
 		case errors.Is(err, domain.ErrInvalidCredentials):
-			sharedhttp.ErrorResponse(w, http.StatusUnauthorized, CodeInvalidCredentials, err.Error())
+			sharedhttp.ErrorResponse(w, r, http.StatusUnauthorized, CodeInvalidCredentials, err.Error())
 		default:
-			sharedhttp.ErrorResponse(w, http.StatusInternalServerError, CodeInternalError, err.Error())
+			sharedhttp.ErrorResponse(w, r, http.StatusInternalServerError, CodeInternalError, err.Error())
 		}
 
 		return
 	}
 
-	sharedhttp.SuccessResponse(w, http.StatusOK, CodeAuthenticated, "Authenticated person", LoginResponse{Token: token})
+	sharedhttp.SuccessResponse(w, r, http.StatusOK, CodeAuthenticated, "Authenticated person", LoginResponse{Token: token})
+}
+
+// Me pega os dados do usuario logado
+func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userIDVal := ctx.Value(contextutil.UserIDKey)
+
+	if userIDVal == nil {
+		sharedhttp.ErrorResponse(w, r, http.StatusUnauthorized, returncodes.CodeUnauthorized, "user ID not found in context")
+		return
+	}
+
+	// já pega como uuid.UUID direto
+	userID, ok := userIDVal.(uuid.UUID)
+	if !ok {
+		sharedhttp.ErrorResponse(w, r, http.StatusUnauthorized, returncodes.CodeUnauthorized, "invalid user ID type")
+		return
+	}
+
+	// busca a pessoa pelo ID
+	person, err := h.service.FindByID(ctx, userID)
+	if err != nil {
+		switch {
+		default:
+			sharedhttp.ErrorResponse(w, r, http.StatusInternalServerError, returncodes.CodeUnauthorized, "person internal server error")
+		}
+		return
+	}
+
+	sharedhttp.SuccessResponse(w, r, http.StatusOK, CodeAuthenticated, "Authenticated person", GetMeResponse{
+		ID:    person.ID,
+		Name:  person.Name,
+		Email: person.Email,
+	})
 }

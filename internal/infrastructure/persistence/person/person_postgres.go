@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 
@@ -65,6 +66,28 @@ func (r *Repository) FindByEmail(email string) (*person.Person, error) {
 	`
 
 	err := r.db.Get(&p, query, email)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	return &p, nil
+}
+
+// FindByID busca pessoa pelo ID
+func (r *Repository) FindByID(id uuid.UUID) (*person.Person, error) {
+	var p person.Person
+
+	query := `
+		SELECT id, name, email, password, created_at
+		FROM person
+		WHERE id = $1
+	`
+
+	err := r.db.Get(&p, query, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil

@@ -34,24 +34,24 @@ var (
 
 // Service representa o servico de person
 type Service struct {
-	repository     Repository
-	bcryptHasher   BcryptHasher
-	tokenGenerator TokenGenerator
-	logger         *logger.Service
+	repository   Repository
+	bcryptHasher BcryptHasher
+	jwtService   JWTService
+	logger       *logger.Service
 }
 
 // NewService cria nova instancia do servico de person
 func NewService(
 	r Repository,
 	hasher BcryptHasher,
-	tokenGenerator TokenGenerator,
+	jwtService JWTService,
 	log *logger.Service,
 ) *Service {
 	return &Service{
-		repository:     r,
-		bcryptHasher:   hasher,
-		tokenGenerator: tokenGenerator,
-		logger:         log,
+		repository:   r,
+		bcryptHasher: hasher,
+		jwtService:   jwtService,
+		logger:       log,
 	}
 }
 
@@ -187,7 +187,7 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, er
 		return "", ErrInvalidCredentials
 	}
 
-	token, err := s.tokenGenerator.Generate(person.ID.String())
+	token, err := s.jwtService.Generate(person.ID)
 	if err != nil {
 
 		s.logger.Error(
@@ -200,4 +200,24 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, er
 	}
 
 	return token, nil
+}
+
+// FindByID retorna os dados do usuario autenticado (sem a senha)
+func (s *Service) FindByID(ctx context.Context, userID uuid.UUID) (*Person, error) {
+	person, err := s.repository.FindByID(userID)
+	if err != nil {
+		s.logger.Error(
+			ctx,
+			"person repository find by ID error",
+			err,
+		)
+
+		return nil, ErrPersonInternal
+	}
+
+	if person == nil || person.ID == uuid.Nil {
+		return nil, ErrPersonNotFound
+	}
+
+	return person, nil
 }

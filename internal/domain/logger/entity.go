@@ -13,7 +13,7 @@ type Log struct {
 	Level     Level               `db:"level"`
 	Message   string              `db:"message"`
 	Service   *string             `db:"service"`
-	RequestID *string             `db:"request_id"`
+	RequestID *uuid.UUID          `db:"request_id"`
 	UserID    *uuid.UUID          `db:"user_id"`
 	Method    *contextutil.Method `db:"method"`
 	Path      *string             `db:"path"`

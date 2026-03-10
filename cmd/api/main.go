@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
@@ -21,15 +20,13 @@ import (
 )
 
 func main() {
+	// ARQUIVO .ENV
 	err := godotenv.Load()
 	if err != nil {
 		log.Println("No .env file found")
 	}
 
-	// ========================
-	// Infra
-	// ========================
-
+	// CONECTANDO NAS DATABASES
 	db, err := database.NewMainPostgresConnection()
 	if err != nil {
 		log.Fatal(err)
@@ -39,45 +36,36 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// RODANDO MIGRATIONS NAS DATABASES
 	database.RunMigrationsMain(db)
 	database.RunMigrationsLogs(dbLog)
 
-	repo := personPersistent.NewPersonRepository(db)
+	// BCRYPT
 	hasher := security.NewBcryptHasher()
 
-	// JWT secret via env
-	secret := os.Getenv("JWT_SECRET")
-	if secret == "" {
-		log.Fatal("JWT_SECRET not set")
-	}
-
-	tokenGenerator := security.NewJWTGenerator(secret)
-
+	// LOG
 	logRepo := loggerPersistent.NewRepository(dbLog)
 	logService := logger.NewService(logRepo)
 
-	// ========================
-	// Domain Service
-	// ========================
+	// JWT
+	jwtService := security.NewJWTService()
 
-	service := person.NewService(repo, hasher, tokenGenerator, logService)
-
-	// ========================
-	// HTTP Handler
-	// ========================
-
+	// PERSON
+	repo := personPersistent.NewPersonRepository(db)
+	service := person.NewService(repo, hasher, jwtService, logService)
 	handler := personHttp.NewHandler(service)
 
+	// ROUTES
 	r := chi.NewRouter()
-
 	r.Use(middleware.RequestMiddleware(logService))
 
-	personHttp.RegisterRoutes(r, handler)
+	// REGISTRO ROUTES
+	personHttp.RegisterRoutes(r, handler, jwtService)
 
 	r.Get("/ping", func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprintln(w, "pong")
 	})
 
-	fmt.Println("Servidor na porta 8080 🚀")
+	fmt.Println("Servidor na porta 8080")
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
