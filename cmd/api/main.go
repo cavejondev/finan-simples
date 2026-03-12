@@ -9,16 +9,29 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
 
+	// DOMAIN
 	"github.com/cavejondev/finan-simples/internal/domain/account"
+	"github.com/cavejondev/finan-simples/internal/domain/category"
 	"github.com/cavejondev/finan-simples/internal/domain/logger"
 	"github.com/cavejondev/finan-simples/internal/domain/person"
+
+	// DATABASE
 	"github.com/cavejondev/finan-simples/internal/infrastructure/database"
+
+	// HANDLERS
 	accountHttp "github.com/cavejondev/finan-simples/internal/infrastructure/handler/account"
-	"github.com/cavejondev/finan-simples/internal/infrastructure/handler/middleware"
+	categoryHttp "github.com/cavejondev/finan-simples/internal/infrastructure/handler/category"
 	personHttp "github.com/cavejondev/finan-simples/internal/infrastructure/handler/person"
+
+	"github.com/cavejondev/finan-simples/internal/infrastructure/handler/middleware"
+
+	// PERSISTENCE
 	accountPersistent "github.com/cavejondev/finan-simples/internal/infrastructure/persistence/account"
+	categoryPersistent "github.com/cavejondev/finan-simples/internal/infrastructure/persistence/category"
 	loggerPersistent "github.com/cavejondev/finan-simples/internal/infrastructure/persistence/logger"
 	personPersistent "github.com/cavejondev/finan-simples/internal/infrastructure/persistence/person"
+
+	// SECURITY
 	"github.com/cavejondev/finan-simples/internal/infrastructure/security"
 )
 
@@ -34,19 +47,20 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	dbLog, err := database.NewLogPostgresConnection()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// RODANDO MIGRATIONS NAS DATABASES
+	// RODANDO MIGRATIONS
 	database.RunMigrationsMain(db)
 	database.RunMigrationsLogs(dbLog)
 
 	// BCRYPT
 	hasher := security.NewBcryptHasher()
 
-	// LOG
+	// LOGGER
 	logRepo := loggerPersistent.NewRepository(dbLog)
 	logService := logger.NewService(logRepo)
 
@@ -54,22 +68,29 @@ func main() {
 	jwtService := security.NewJWTService()
 
 	// PERSON
-	repo := personPersistent.NewPersonRepository(db)
-	service := person.NewService(repo, hasher, jwtService, logService)
-	handler := personHttp.NewHandler(service)
+	personRepo := personPersistent.NewPersonRepository(db)
+	personService := person.NewService(personRepo, hasher, jwtService, logService)
+	personHandler := personHttp.NewHandler(personService)
 
-	// A
-	repoAccount := accountPersistent.NewAccountRepository(db)
-	serviceAccount := account.NewService(repoAccount, logService)
-	handlerAccount := accountHttp.NewHandler(serviceAccount)
+	// ACCOUNT
+	accountRepo := accountPersistent.NewAccountRepository(db)
+	accountService := account.NewService(accountRepo, logService)
+	accountHandler := accountHttp.NewHandler(accountService)
 
-	// ROUTES
+	// CATEGORY
+	categoryRepo := categoryPersistent.NewCategoryRepository(db)
+	categoryService := category.NewService(categoryRepo, logService)
+	categoryHandler := categoryHttp.NewHandler(categoryService)
+
+	// ROUTER
 	r := chi.NewRouter()
+
 	r.Use(middleware.RequestMiddleware(logService))
 
 	// REGISTRO ROUTES
-	personHttp.RegisterRoutes(r, handler, jwtService)
-	accountHttp.RegisterRoutes(r, handlerAccount, jwtService)
+	personHttp.RegisterRoutes(r, personHandler, jwtService)
+	accountHttp.RegisterRoutes(r, accountHandler, jwtService)
+	categoryHttp.RegisterRoutes(r, categoryHandler, jwtService)
 
 	r.Get("/ping", func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprintln(w, "pong")

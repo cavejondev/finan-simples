@@ -17,7 +17,7 @@ CREATE TABLE account (
         ON DELETE RESTRICT,
 
     CONSTRAINT account_person_name_unique
-        UNIQUE (person_id, LOWER(name))
+        UNIQUE (person_id, name)
 );
 
 -- índice importante para buscar contas do usuário
