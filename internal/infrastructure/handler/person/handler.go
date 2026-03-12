@@ -26,7 +26,7 @@ func NewHandler(service *domain.Service) *Handler {
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	var req RegisterRequest
+	var req RequestRegister
 	ctx := r.Context()
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -88,7 +88,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	var req LoginRequest
+	var req RequestLogin
 	ctx := r.Context()
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -109,7 +109,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sharedhttp.SuccessResponse(w, r, http.StatusOK, CodeAuthenticated, "Authenticated person", LoginResponse{Token: token})
+	sharedhttp.SuccessResponse(w, r, http.StatusOK, CodeAuthenticated, "Authenticated person", ResponseLogin{Token: token})
 }
 
 // Me pega os dados do usuario logado
@@ -139,7 +139,7 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sharedhttp.SuccessResponse(w, r, http.StatusOK, CodeAuthenticated, "Authenticated person", GetMeResponse{
+	sharedhttp.SuccessResponse(w, r, http.StatusOK, CodeAuthenticated, "Authenticated person", ResponseGetMe{
 		ID:    person.ID,
 		Name:  person.Name,
 		Email: person.Email,

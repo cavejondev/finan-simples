@@ -3,30 +3,41 @@ package person
 
 import "github.com/google/uuid"
 
+//
 // REQUESTS
+//
 
-// RegisterRequest representa o payload de registro.
-type RegisterRequest struct {
+// RequestRegister representa o payload de registro
+type RequestRegister struct {
 	Name     string `json:"name"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
-// LoginRequest representa o payload de login.
-type LoginRequest struct {
+// RequestLogin representa o payload de login
+type RequestLogin struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
+//
 // RESPONSES
+//
 
-// LoginResponse representa o retorno do login.
-type LoginResponse struct {
+// ResponseLogin representa o retorno do login
+type ResponseLogin struct {
 	Token string `json:"token"`
 }
 
-// GetMeResponse representa o retorno da rota get me.
-type GetMeResponse struct {
+// ResponsePerson representa a pessoa retornada pela API
+type ResponsePerson struct {
+	ID    uuid.UUID `json:"id"`
+	Name  string    `json:"name"`
+	Email string    `json:"email"`
+}
+
+// ResponseGetMe representa o retorno da rota get me.
+type ResponseGetMe struct {
 	ID    uuid.UUID `json:"id"`
 	Name  string    `json:"name"`
 	Email string    `json:"email"`
