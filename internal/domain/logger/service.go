@@ -3,6 +3,7 @@ package logger
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"runtime"
 	"time"
 
@@ -77,6 +78,17 @@ func (s *Service) save(
 		Metadata:  metaJSON,
 		CreatedAt: time.Now(),
 	}
+
+	// PRINT DEBUG
+	fmt.Printf(
+		"[LOG] level=%s service=%s message=%s error=%v file=%s line=%d\n",
+		level,
+		fn,
+		message,
+		errorMsg,
+		file,
+		line,
+	)
 
 	_ = s.repo.Create(log)
 }
