@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/cavejondev/finan-simples/internal/domain/database"
 	"github.com/cavejondev/finan-simples/internal/domain/logger"
 )
 
@@ -169,4 +170,62 @@ func (s *Service) FindByID(ctx context.Context, personID, accountID uuid.UUID) (
 	}
 
 	return account, nil
+}
+
+func (s *Service) IncreaseBalance(
+	ctx context.Context,
+	tx database.Tx,
+	accountID uuid.UUID,
+	amount int64,
+) error {
+	if amount <= 0 {
+		return nil
+	}
+
+	err := s.repository.IncreaseBalance(ctx, tx, accountID, amount)
+	if err != nil {
+
+		if errors.Is(err, ErrAccountNotFound) {
+			return ErrAccountNotFound
+		}
+
+		s.logger.Error(
+			ctx,
+			"account repository increase balance error",
+			err,
+		)
+
+		return ErrAccountInternal
+	}
+
+	return nil
+}
+
+func (s *Service) DecreaseBalance(
+	ctx context.Context,
+	tx database.Tx,
+	accountID uuid.UUID,
+	amount int64,
+) error {
+	if amount <= 0 {
+		return nil
+	}
+
+	err := s.repository.DecreaseBalance(ctx, tx, accountID, amount)
+	if err != nil {
+
+		if errors.Is(err, ErrAccountNotFound) {
+			return ErrAccountNotFound
+		}
+
+		s.logger.Error(
+			ctx,
+			"account repository decrease balance error",
+			err,
+		)
+
+		return ErrAccountInternal
+	}
+
+	return nil
 }

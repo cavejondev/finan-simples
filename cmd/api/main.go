@@ -15,6 +15,7 @@ import (
 	"github.com/cavejondev/finan-simples/internal/domain/logger"
 	"github.com/cavejondev/finan-simples/internal/domain/person"
 	"github.com/cavejondev/finan-simples/internal/domain/subcategory"
+	"github.com/cavejondev/finan-simples/internal/domain/transaction"
 
 	// DATABASE
 	"github.com/cavejondev/finan-simples/internal/infrastructure/database"
@@ -24,6 +25,7 @@ import (
 	categoryHttp "github.com/cavejondev/finan-simples/internal/infrastructure/handler/category"
 	personHttp "github.com/cavejondev/finan-simples/internal/infrastructure/handler/person"
 	subcategoryHttp "github.com/cavejondev/finan-simples/internal/infrastructure/handler/subcategory"
+	transactionHttp "github.com/cavejondev/finan-simples/internal/infrastructure/handler/transaction"
 
 	"github.com/cavejondev/finan-simples/internal/infrastructure/handler/middleware"
 
@@ -33,19 +35,26 @@ import (
 	loggerPersistent "github.com/cavejondev/finan-simples/internal/infrastructure/persistence/logger"
 	personPersistent "github.com/cavejondev/finan-simples/internal/infrastructure/persistence/person"
 	subcategoryPersistent "github.com/cavejondev/finan-simples/internal/infrastructure/persistence/subcategory"
+	transactionPersistent "github.com/cavejondev/finan-simples/internal/infrastructure/persistence/transaction"
 
 	// SECURITY
 	"github.com/cavejondev/finan-simples/internal/infrastructure/security"
 )
 
 func main() {
-	// ARQUIVO .ENV
+	// --------------------------------------------------
+	// ENV
+	// --------------------------------------------------
+
 	err := godotenv.Load()
 	if err != nil {
 		log.Println("No .env file found")
 	}
 
-	// CONECTANDO NAS DATABASES
+	// --------------------------------------------------
+	// DATABASES
+	// --------------------------------------------------
+
 	db, err := database.NewMainPostgresConnection()
 	if err != nil {
 		log.Fatal(err)
@@ -56,55 +65,128 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// RODANDO MIGRATIONS
+	// --------------------------------------------------
+	// MIGRATIONS
+	// --------------------------------------------------
+
 	database.RunMigrationsMain(db)
 	database.RunMigrationsLogs(dbLog)
 
-	// BCRYPT
-	hasher := security.NewBcryptHasher()
+	// --------------------------------------------------
+	// INFRA
+	// --------------------------------------------------
 
+	txManager := database.NewManager(db)
+
+	hasher := security.NewBcryptHasher()
+	jwtService := security.NewJWTService()
+
+	// --------------------------------------------------
 	// LOGGER
+	// --------------------------------------------------
+
 	logRepo := loggerPersistent.NewRepository(dbLog)
 	logService := logger.NewService(logRepo)
 
-	// JWT
-	jwtService := security.NewJWTService()
-
+	// --------------------------------------------------
 	// PERSON
+	// --------------------------------------------------
+
 	personRepo := personPersistent.NewPersonRepository(db)
-	personService := person.NewService(personRepo, hasher, jwtService, logService)
+
+	personService := person.NewService(
+		personRepo,
+		hasher,
+		jwtService,
+		logService,
+	)
+
 	personHandler := personHttp.NewHandler(personService)
 
+	// --------------------------------------------------
 	// ACCOUNT
+	// --------------------------------------------------
+
 	accountRepo := accountPersistent.NewAccountRepository(db)
-	accountService := account.NewService(accountRepo, logService)
+
+	accountService := account.NewService(
+		accountRepo,
+		logService,
+	)
+
 	accountHandler := accountHttp.NewHandler(accountService)
 
+	// --------------------------------------------------
 	// CATEGORY
+	// --------------------------------------------------
+
 	categoryRepo := categoryPersistent.NewCategoryRepository(db)
-	categoryService := category.NewService(categoryRepo, logService)
+
+	categoryService := category.NewService(
+		categoryRepo,
+		logService,
+	)
+
 	categoryHandler := categoryHttp.NewHandler(categoryService)
 
+	// --------------------------------------------------
 	// SUBCATEGORY
+	// --------------------------------------------------
+
 	subcategoryRepo := subcategoryPersistent.NewSubcategoryRepository(db)
-	subcategoryService := subcategory.NewService(subcategoryRepo, categoryService, logService)
+
+	subcategoryService := subcategory.NewService(
+		subcategoryRepo,
+		categoryService,
+		logService,
+	)
+
 	subcategoryHandler := subcategoryHttp.NewHandler(subcategoryService)
 
+	// --------------------------------------------------
+	// TRANSACTION
+	// --------------------------------------------------
+
+	transactionRepo := transactionPersistent.NewTransactionRepository(db)
+
+	transactionService := transaction.NewService(
+		transactionRepo,
+		accountService,
+		subcategoryService,
+		categoryService,
+		txManager,
+		logService,
+	)
+
+	transactionHandler := transactionHttp.NewHandler(transactionService)
+
+	// --------------------------------------------------
 	// ROUTER
+	// --------------------------------------------------
+
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestMiddleware(logService))
 
-	// REGISTRO ROUTES
+	// --------------------------------------------------
+	// ROUTES
+	// --------------------------------------------------
+
 	personHttp.RegisterRoutes(r, personHandler, jwtService)
 	accountHttp.RegisterRoutes(r, accountHandler, jwtService)
 	categoryHttp.RegisterRoutes(r, categoryHandler, jwtService)
 	subcategoryHttp.RegisterRoutes(r, subcategoryHandler, jwtService)
+	transactionHttp.RegisterRoutes(r, transactionHandler, jwtService)
 
 	r.Get("/ping", func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprintln(w, "pong")
 	})
 
+	// --------------------------------------------------
+	// SERVER
+	// --------------------------------------------------
+
 	fmt.Println("Servidor na porta 8080")
+
 	log.Fatal(http.ListenAndServe(":8080", r))
 }

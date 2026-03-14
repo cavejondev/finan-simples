@@ -2,6 +2,7 @@
 package account
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/cavejondev/finan-simples/internal/domain/account"
+	"github.com/cavejondev/finan-simples/internal/domain/database"
 	"github.com/cavejondev/finan-simples/internal/infrastructure/persistence"
 )
 
@@ -124,6 +126,66 @@ func (r *Repository) Update(a *account.Account) error {
 		}
 
 		return err
+	}
+
+	return nil
+}
+
+// IncreaseBalance adiciona saldo na conta
+func (r *Repository) IncreaseBalance(
+	ctx context.Context,
+	tx database.Tx,
+	accountID uuid.UUID,
+	amount int64,
+) error {
+	query := `
+		UPDATE account
+		SET balance = balance + $1
+		WHERE id = $2
+	`
+
+	result, err := tx.ExecContext(ctx, query, amount, accountID)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return account.ErrAccountNotFound
+	}
+
+	return nil
+}
+
+// DecreaseBalance remove saldo da conta
+func (r *Repository) DecreaseBalance(
+	ctx context.Context,
+	tx database.Tx,
+	accountID uuid.UUID,
+	amount int64,
+) error {
+	query := `
+		UPDATE account
+		SET balance = balance - $1
+		WHERE id = $2
+	`
+
+	result, err := tx.ExecContext(ctx, query, amount, accountID)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return account.ErrAccountNotFound
 	}
 
 	return nil

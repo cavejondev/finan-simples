@@ -3,7 +3,6 @@ package logger
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"runtime"
 	"time"
 
@@ -79,16 +78,20 @@ func (s *Service) save(
 		CreatedAt: time.Now(),
 	}
 
-	// PRINT DEBUG
+	/*var err string
+	if errorMsg != nil {
+		err = *errorMsg
+	}
+
 	fmt.Printf(
-		"[LOG] level=%s service=%s message=%s error=%v file=%s line=%d\n",
+		"[LOG]\n level=%s\n service=%s\n message=%s\n error=%s\n file=%s\n line=%d\n",
 		level,
 		fn,
 		message,
-		errorMsg,
+		err,
 		file,
 		line,
-	)
+	)*/
 
 	_ = s.repo.Create(log)
 }
